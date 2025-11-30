@@ -109,6 +109,27 @@ app.post("/send-to-discord", async (req, res) => {
     return res.json({ ok: true });
 });
 
+// /download?url=<tiktok-url>
+// Resolve to HD link, then redirect browser to the actual MP4
+app.get("/download", async (req, res) => {
+    const tiktokUrl = req.query.url;
+    if (!tiktokUrl || !tiktokUrl.includes("tiktok.com")) {
+        return res.status(400).send("Invalid TikTok URL");
+    }
+
+    try {
+        const result = await resolveTikTok(tiktokUrl);
+        if (!result) {
+            return res.status(500).send("Failed to resolve video");
+        }
+
+        return res.redirect(result.url);
+    } catch (err) {
+        console.error("Download error:", err.message);
+        return res.status(500).send("Error: " + err.message);
+    }
+});
+
 // Simple UI
 app.get("/", (req, res) => {
     res.send(`
@@ -118,6 +139,7 @@ app.get("/", (req, res) => {
 <h1>My TikTok Downloader</h1>
 <input id="url" style="width:300px;padding:10px" placeholder="TikTok URL here..." />
 <button onclick="go()">Get HD</button>
+<button onclick="download()">Download</button>
 <div id="result" style="margin-top:20px;"></div>
 <script>
 async function go(){
@@ -127,6 +149,12 @@ async function go(){
   const data = await res.json();
   if(!data.ok){ document.getElementById("result").innerHTML="Error: "+data.error; return; }
   document.getElementById("result").innerHTML='<a href="'+data.url+'" target="_blank">'+data.url+'</a><br>'+data.quality;
+}
+
+async function download(){
+  const url = document.getElementById("url").value;
+  if(!url) return;
+  window.location.href = "/download?url=" + encodeURIComponent(url);
 }
 </script>
 </body></html>
